@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft 皮肤包合并工具</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="./fontawesome/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="brand">
+                    <i class="fas fa-cube brand-icon"></i>
+                    <div class="brand-text">
+                        <h1>Skin Pack Merger</h1>
+                        <span class="brand-subtitle">Professional Minecraft Tool</span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-ghost" id="helpBtn">
+                        <i class="fas fa-question-circle"></i>
+                        帮助
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Upload Section -->
+            <section class="upload-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-upload"></i>选择文件</h2>
+                    <p>支持拖拽文件夹或单独选择文件</p>
+                </div>
+                
+                <div class="upload-zone" id="uploadZone">
+                    <div class="upload-content">
+                        <div class="upload-icon">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                        </div>
+                        <h3>拖拽文件夹到这里</h3>
+                        <p>或者点击下方按钮选择文件</p>
+                        <div class="upload-buttons">
+                            <button class="btn btn-primary" onclick="document.getElementById('folderInput').click()">
+                                <i class="fas fa-folder-open"></i>
+                                选择文件夹
+                            </button>
+                            <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">
+                                <i class="fas fa-file"></i>
+                                选择文件
+                            </button>
+                        </div>
+                        <input type="file" id="folderInput" webkitdirectory multiple style="display: none;">
+                        <input type="file" id="fileInput" accept=".json" multiple style="display: none;">
+                    </div>
+                </div>
+            </section>
+
+            <!-- File List Section -->
+            <section class="file-list-section" id="fileListSection" style="display: none;">
+                <div class="section-header">
+                    <h2><i class="fas fa-list"></i>已加载的皮肤包</h2>
+                    <div class="file-count">
+                        <span id="fileCount">0</span> 个皮肤包
+                    </div>
+                </div>
+                <div class="file-grid" id="fileList"></div>
+            </section>
+
+            <!-- Settings Section -->
+            <section class="settings-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-cog"></i>合并设置</h2>
+                </div>
+                
+                <div class="settings-grid">
+                    <div class="setting-group">
+                        <label for="packageName">包标识符</label>
+                        <input type="text" id="packageName" placeholder="MergedSkinPack" value="MergedSkinPack">
+                    </div>
+                    <div class="setting-group">
+                        <label for="displayName">显示名称</label>
+                        <input type="text" id="displayName" placeholder="合并皮肤包" value="合并皮肤包">
+                    </div>
+                </div>
+
+                <div class="download-format">
+                    <h3>下载格式</h3>
+                    <div class="format-options">
+                        <label class="format-option">
+                            <input type="radio" name="downloadType" value="zip" checked>
+                            <div class="option-content">
+                                <i class="fas fa-file-archive"></i>
+                                <div>
+                                    <strong>完整包 (ZIP)</strong>
+                                    <span>包含所有文件的完整皮肤包</span>
+                                </div>
+                            </div>
+                        </label>
+                        <label class="format-option">
+                            <input type="radio" name="downloadType" value="separate">
+                            <div class="option-content">
+                                <i class="fas fa-file-code"></i>
+                                <div>
+                                    <strong>仅配置文件</strong>
+                                    <span>只下载 JSON 配置文件</span>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Action Section -->
+            <section class="action-section">
+                <div class="action-buttons">
+                    <button class="btn btn-primary btn-large" id="mergeBtn" onclick="mergeSkinPacks()" disabled>
+                        <i class="fas fa-magic"></i>
+                        开始合并
+                    </button>
+                    <button class="btn btn-success btn-large" id="downloadBtn" onclick="downloadResult()" disabled style="display: none;">
+                        <i class="fas fa-download"></i>
+                        下载结果
+                    </button>
+                </div>
+            </section>
+
+            <!-- Progress Section -->
+            <section class="progress-section" id="progressSection" style="display: none;">
+                <div class="progress-header">
+                    <h3>处理进度</h3>
+                    <span class="progress-text" id="progressText">准备中...</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section class="results-section" id="resultsSection" style="display: none;">
+                <div class="section-header">
+                    <h2><i class="fas fa-chart-bar"></i>合并结果</h2>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-user-alt"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="totalSkins">0</div>
+                            <div class="stat-label">皮肤数量</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-shapes"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="totalGeometries">0</div>
+                            <div class="stat-label">几何模型</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-image"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="totalTextures">0</div>
+                            <div class="stat-label">纹理文件</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-folder"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="totalFolders">0</div>
+                            <div class="stat-label">源文件夹</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Log Section -->
+            <section class="log-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-terminal"></i>处理日志</h2>
+                    <button class="btn btn-ghost btn-small" onclick="clearLog()">
+                        <i class="fas fa-trash"></i>
+                        清空
+                    </button>
+                </div>
+                <div class="log-container" id="logContainer">
+                    <div class="log-entry log-info">
+                        <span class="log-time">[系统]</span>
+                        <span class="log-message">工具初始化完成，请选择要合并的皮肤包</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
