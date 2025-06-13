@@ -1,8 +1,117 @@
+// 移动端检测和控制
+class MobileDetector {
+    constructor() {
+        this.isMobile = this.detectMobile();
+        this.isTablet = this.detectTablet();
+        
+        if (this.isMobile || this.isTablet) {
+            this.showMobileWarning();
+            this.disableDesktopFeatures();
+        }
+    }
+    
+    detectMobile() {
+        // 检测移动设备
+        const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+        const userAgent = navigator.userAgent;
+        const touchScreen = 'ontouchstart' in window;
+        const smallScreen = window.innerWidth <= 768;
+        
+        return mobileRegex.test(userAgent) || (touchScreen && smallScreen);
+    }
+    
+    detectTablet() {
+        // 检测平板设备
+        const tabletRegex = /iPad|Android(?!.*Mobile)|Tablet/i;
+        const userAgent = navigator.userAgent;
+        const mediumScreen = window.innerWidth > 768 && window.innerWidth <= 1024;
+        const touchScreen = 'ontouchstart' in window;
+        
+        return tabletRegex.test(userAgent) || (touchScreen && mediumScreen);
+    }
+    
+    showMobileWarning() {
+        const warningOverlay = document.getElementById('mobileWarning');
+        if (warningOverlay) {
+            warningOverlay.style.display = 'flex';
+        }
+    }
+    
+    disableDesktopFeatures() {
+        // 禁用主要功能
+        const appContainer = document.querySelector('.app-container');
+        if (appContainer) {
+            appContainer.classList.add('mobile-disabled');
+        }
+        
+        // 禁用所有按钮
+        const buttons = document.querySelectorAll('button, input[type="file"]');
+        buttons.forEach(btn => {
+            btn.disabled = true;
+        });
+        
+        // 禁用拖拽功能
+        const uploadZone = document.getElementById('uploadZone');
+        if (uploadZone) {
+            uploadZone.style.pointerEvents = 'none';
+        }
+    }
+    
+    closeMobileWarning() {
+        const warningOverlay = document.getElementById('mobileWarning');
+        if (warningOverlay) {
+            warningOverlay.style.display = 'none';
+        }
+        
+        // 即使关闭警告，仍然保持功能禁用状态
+        this.showToast('功能仍然被禁用，请在桌面端使用', 'warning');
+    }
+    
+    showToast(message, type = 'info') {
+        const toastContainer = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        
+        const icons = {
+            info: 'fa-info-circle',
+            success: 'fa-check-circle',
+            warning: 'fa-exclamation-triangle',
+            error: 'fa-times-circle'
+        };
+        
+        toast.innerHTML = `
+            <i class="fas ${icons[type]}"></i>
+            <span>${message}</span>
+        `;
+        
+        toastContainer.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.transform = 'translateX(100%)';
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        }, 5000);
+    }
+}
+
+// 全局函数：关闭移动端警告
+function closeMobileWarning() {
+    if (window.mobileDetector) {
+        window.mobileDetector.closeMobileWarning();
+    }
+}
+
 class SkinPackMerger {
     constructor() {
         this.loadedSkinPacks = [];
         this.mergedResult = null;
         this.isProcessing = false;
+        
+        // 检查是否为移动端
+        if (window.mobileDetector && (window.mobileDetector.isMobile || window.mobileDetector.isTablet)) {
+            this.logMessage('检测到移动设备，功能已禁用', 'warning');
+            return;
+        }
         
         this.initializeEventListeners();
         this.setupDragAndDrop();
@@ -837,11 +946,15 @@ class CompleteSkinPackMerger {
 
 // Global functions for onclick handlers
 function mergeSkinPacks() {
-    skinPackMerger.mergeSkinPacks();
+    if (window.skinPackMerger) {
+        window.skinPackMerger.mergeSkinPacks();
+    }
 }
 
 function downloadResult() {
-    skinPackMerger.downloadResult();
+    if (window.skinPackMerger) {
+        window.skinPackMerger.downloadResult();
+    }
 }
 
 function clearLog() {
@@ -849,8 +962,12 @@ function clearLog() {
 }
 
 // Initialize the application
-let skinPackMerger;
-
 document.addEventListener('DOMContentLoaded', () => {
-    skinPackMerger = new SkinPackMerger();
+    // 首先初始化移动端检测
+    window.mobileDetector = new MobileDetector();
+    
+    // 然后初始化主应用（如果不是移动端）
+    if (!window.mobileDetector.isMobile && !window.mobileDetector.isTablet) {
+        window.skinPackMerger = new SkinPackMerger();
+    }
 });
