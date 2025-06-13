@@ -612,14 +612,15 @@ class SkinPackMerger {
         
         this.updateProgress(20, '添加纹理文件...');
         
-        // Add texture files
+        // Add texture files with proper paths
         if (this.mergedResult.textures.size > 0) {
             const textureFiles = Array.from(this.mergedResult.textures);
             for (let i = 0; i < textureFiles.length; i++) {
-                const [fileName, file] = textureFiles[i];
+                const [fileName, fileInfo] = textureFiles[i];
                 try {
-                    const fileContent = await this.readFileAsArrayBuffer(file);
-                    zip.file(fileName, fileContent);
+                    const fileContent = await this.readFileAsArrayBuffer(fileInfo.file);
+                    // 使用完整路径保存文件
+                    zip.file(fileInfo.path, fileContent);
                     
                     const progress = 20 + (i / textureFiles.length) * 50;
                     this.updateProgress(progress, `处理纹理: ${i + 1}/${textureFiles.length}`);
@@ -635,14 +636,15 @@ class SkinPackMerger {
         
         this.updateProgress(70, '添加其他文件...');
         
-        // Add other files
+        // Add other files with proper paths
         if (this.mergedResult.others.size > 0) {
             const otherFiles = Array.from(this.mergedResult.others);
             for (let i = 0; i < otherFiles.length; i++) {
-                const [fileName, file] = otherFiles[i];
+                const [fileName, fileInfo] = otherFiles[i];
                 try {
-                    const fileContent = await this.readFileAsArrayBuffer(file);
-                    zip.file(fileName, fileContent);
+                    const fileContent = await this.readFileAsArrayBuffer(fileInfo.file);
+                    // 使用完整路径保存文件
+                    zip.file(fileInfo.path, fileContent);
                 } catch (error) {
                     this.logMessage(`其他文件处理失败: ${fileName}`, 'warning');
                 }
@@ -773,7 +775,7 @@ class SkinPackMerger {
     }
 }
 
-// Complete Skin Pack Merger Class
+// Complete Skin Pack Merger Class - 修复版本
 class CompleteSkinPackMerger {
     constructor() {
         const packageName = document.getElementById('packageName').value.trim();
@@ -790,8 +792,10 @@ class CompleteSkinPackMerger {
             "minecraft:geometry": []
         };
         
-        this.textureFiles = new Map();
+        // 修改数据结构以支持文件路径分离
+        this.textureFiles = new Map(); // key: 唯一标识, value: {file, path, originalName, packName}
         this.otherFiles = new Map();
+        this.filePathMap = new Map(); // 用于映射原始路径到新路径
     }
 
     async merge(skinPacks, progressCallback) {
@@ -810,13 +814,15 @@ class CompleteSkinPackMerger {
             }
             
             allPackNames.push(pack.info.serializeName);
+            const packPrefix = this.sanitizePackName(pack.folderName);
 
-            // Process skins
+            // Process skins with texture path updates
             const skins = pack.skinData.skins || [];
             for (const skin of skins) {
                 const skinCopy = JSON.parse(JSON.stringify(skin));
                 let skinName = skinCopy.localization_name || 'unknown';
                 
+                // Handle skin name conflicts
                 if (existingSkinNames.has(skinName)) {
                     let counter = 2;
                     let newName = `${skinName}_${counter}`;
@@ -828,12 +834,22 @@ class CompleteSkinPackMerger {
                     skinName = newName;
                 }
                 
+                // Update texture path if exists
+                if (skinCopy.texture) {
+                    const originalTexture = skinCopy.texture;
+                    const newTexturePath = `textures/${packPrefix}/${this.getFileName(originalTexture)}`;
+                    skinCopy.texture = newTexturePath;
+                    
+                    // 记录路径映射
+                    this.filePathMap.set(originalTexture, newTexturePath);
+                }
+                
                 existingSkinNames.add(skinName);
                 this.mergedSkins.skins.push(skinCopy);
                 totalSkins++;
             }
 
-            // Process geometries
+            // Process geometries with identifier updates
             for (const geoFile of pack.geometryData) {
                 const converted = this.convertGeometryToNewFormat(geoFile.data);
                 if (converted && converted['minecraft:geometry']) {
@@ -844,10 +860,10 @@ class CompleteSkinPackMerger {
                         let identifier = originalId;
                         if (existingGeometryIds.has(identifier)) {
                             let counter = 2;
-                            let newId = `${identifier}_${counter}`;
+                            let newId = `${packPrefix}_${this.getFileName(identifier)}_${counter}`;
                             while (existingGeometryIds.has(newId)) {
                                 counter++;
-                                newId = `${identifier}_${counter}`;
+                                newId = `${packPrefix}_${this.getFileName(identifier)}_${counter}`;
                             }
                             geometryCopy.description.identifier = newId;
                             identifier = newId;
@@ -860,16 +876,37 @@ class CompleteSkinPackMerger {
                 }
             }
 
-            // Collect files
+            // Collect texture files with unique paths
             pack.textureFiles.forEach(file => {
-                if (!this.textureFiles.has(file.name)) {
-                    this.textureFiles.set(file.name, file);
+                const fileName = file.name;
+                const safeName = this.sanitizeFileName(fileName);
+                const uniquePath = `textures/${packPrefix}/${safeName}`;
+                const uniqueKey = `${packPrefix}_${fileName}`;
+                
+                if (!this.textureFiles.has(uniqueKey)) {
+                    this.textureFiles.set(uniqueKey, {
+                        file: file,
+                        path: uniquePath,
+                        originalName: fileName,
+                        packName: pack.folderName
+                    });
                 }
             });
 
+            // Collect other files with unique paths
             pack.otherFiles.forEach(file => {
-                if (!this.otherFiles.has(file.name)) {
-                    this.otherFiles.set(file.name, file);
+                const fileName = file.name;
+                const safeName = this.sanitizeFileName(fileName);
+                const uniquePath = `others/${packPrefix}/${safeName}`;
+                const uniqueKey = `${packPrefix}_${fileName}`;
+                
+                if (!this.otherFiles.has(uniqueKey)) {
+                    this.otherFiles.set(uniqueKey, {
+                        file: file,
+                        path: uniquePath,
+                        originalName: fileName,
+                        packName: pack.folderName
+                    });
                 }
             });
 
@@ -907,6 +944,32 @@ class CompleteSkinPackMerger {
                 folderCount: skinPacks.length
             }
         };
+    }
+
+    // 清理包名，用作文件夹前缀
+    sanitizePackName(packName) {
+        return packName
+            .replace(/[^a-zA-Z0-9_-]/g, '_')
+            .replace(/_{2,}/g, '_')
+            .replace(/^_|_$/g, '')
+            .toLowerCase();
+    }
+
+    // 清理文件名
+    sanitizeFileName(fileName) {
+        const extension = fileName.substring(fileName.lastIndexOf('.'));
+        const baseName = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
+        const cleanBaseName = baseName
+            .replace(/[^a-zA-Z0-9_-]/g, '_')
+            .replace(/_{2,}/g, '_')
+            .replace(/^_|_$/g, '');
+        
+        return cleanBaseName + extension;
+    }
+
+    // 获取文件名（不含路径）
+    getFileName(path) {
+        return path.split(/[/\\]/).pop() || path;
     }
 
     convertGeometryToNewFormat(data) {
