@@ -7,9 +7,37 @@
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="./fontawesome/css/all.min.css">
 </head>
 <body>
+    <!-- 移动端警告遮罩 -->
+    <div class="mobile-warning-overlay" id="mobileWarning" style="display: none;">
+        <div class="mobile-warning-content">
+            <div class="mobile-warning-icon">
+                <i class="fas fa-mobile-alt"></i>
+            </div>
+            <h2>移动端不支持</h2>
+            <p>抱歉，此工具需要在桌面端浏览器中使用，因为需要处理文件夹和大量文件操作。</p>
+            <div class="mobile-warning-reasons">
+                <h3>为什么不支持移动端？</h3>
+                <ul>
+                    <li><i class="fas fa-folder"></i> 需要文件夹拖拽功能</li>
+                    <li><i class="fas fa-file-archive"></i> 需要处理ZIP文件</li>
+                    <li><i class="fas fa-memory"></i> 需要大量内存处理文件</li>
+                    <li><i class="fas fa-download"></i> 需要批量下载功能</li>
+                </ul>
+            </div>
+            <div class="mobile-warning-suggestion">
+                <h3>建议解决方案</h3>
+                <p><i class="fas fa-desktop"></i> 请在电脑上使用此工具</p>
+                <p><i class="fas fa-code"></i> 如需移动端支持，请使用 Python 版本（暂未提供）</p>
+            </div>
+            <button class="mobile-warning-close" onclick="closeMobileWarning()">
+                <i class="fas fa-times"></i>
+                我了解了
+            </button>
+        </div>
+    </div>
+
     <div class="app-container">
         <!-- Header -->
         <header class="app-header">
@@ -163,7 +191,7 @@
                         </div>
                         <div class="stat-content">
                             <div class="stat-value" id="totalGeometries">0</div>
-                            <div class="stat-label">模型</div>
+                            <div class="stat-label">几何模型</div>
                         </div>
                     </div>
                     <div class="stat-card">
@@ -172,7 +200,7 @@
                         </div>
                         <div class="stat-content">
                             <div class="stat-value" id="totalTextures">0</div>
-                            <div class="stat-label">模型贴图</div>
+                            <div class="stat-label">纹理文件</div>
                         </div>
                     </div>
                     <div class="stat-card">
