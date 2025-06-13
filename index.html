@@ -26,13 +26,22 @@
                     <li><i class="fas fa-download"></i> 需要批量下载功能</li>
                 </ul>
             </div>
-            <div class="mobile-warning-suggestion">
-                <h3>建议解决方案</h3>
-                <p><i class="fas fa-desktop"></i> 请在电脑上使用此工具</p>
-                <p><i class="fas fa-code"></i> 如需移动端支持，请使用 Python 版本</p>
-                <!-- 添加的Python下载按钮 -->
-                <a href="./skinpack-merger.py" class="btn btn-primary" style="margin-top: 10px; display: inline-block; text-decoration: none;">
-            </div>
+<div class="mobile-warning-suggestion">
+    <h3>建议解决方案</h3>
+    <p><i class="fas fa-desktop"></i> 请在电脑上使用此工具</p>
+    <p><i class="fas fa-code"></i> 如需移动端支持，请使用 Python 版本</p>
+    <!-- 修改后的Python下载按钮 - 确保文字可见 -->
+    <a href="https://example.com/download/skinpack-merger.py" 
+       class="btn btn-primary" 
+       style="margin-top: 10px; 
+              display: inline-block; 
+              text-decoration: none;
+              color: white; /* 确保文字颜色 */
+              padding: 8px 16px; /* 添加内边距 */">
+        <i class="fas fa-download"></i>
+        下载Python版本
+    </a>
+</div>
             <button class="mobile-warning-close" onclick="closeMobileWarning()">
                 <i class="fas fa-times"></i>
                 我了解了
