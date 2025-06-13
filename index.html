@@ -29,7 +29,12 @@
             <div class="mobile-warning-suggestion">
                 <h3>建议解决方案</h3>
                 <p><i class="fas fa-desktop"></i> 请在电脑上使用此工具</p>
-                <p><i class="fas fa-code"></i> 如需移动端支持，请使用 Python 版本（暂未提供）</p>
+                <p><i class="fas fa-code"></i> 如需移动端支持，请使用 Python 版本</p>
+                <!-- 添加的Python下载按钮 -->
+                <button class="btn btn-primary" style="margin-top: 10px;" onclick="window.location.href='./skinpack-merger.py'">
+                    <i class="fas fa-download"></i>
+                    下载Python版本
+                </button>
             </div>
             <button class="mobile-warning-close" onclick="closeMobileWarning()">
                 <i class="fas fa-times"></i>
@@ -38,6 +43,7 @@
         </div>
     </div>
 
+    <!-- 其余部分保持不变 -->
     <div class="app-container">
         <!-- Header -->
         <header class="app-header">
