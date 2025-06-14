@@ -217,17 +217,23 @@ class SkinPackMerger {
                     skins: [],
                     geometries: [],
                     textures: [],
+                    texts: [],
                     others: []
                 };
             }
             
             const fileName = file.name.toLowerCase();
+            const filePath = file.webkitRelativePath.toLowerCase();
+            
             if (fileName === 'skins.json') {
                 folderGroups[folderName].skins.push(file);
             } else if (fileName.endsWith('.json') && (fileName.includes('geometry') || fileName.includes('model'))) {
                 folderGroups[folderName].geometries.push(file);
             } else if (fileName.match(/\.(png|jpg|jpeg)$/)) {
                 folderGroups[folderName].textures.push(file);
+            } else if (filePath.includes('/texts/')) {
+                // 检测 texts 文件夹中的文件
+                folderGroups[folderName].texts.push(file);
             } else {
                 folderGroups[folderName].others.push(file);
             }
@@ -243,12 +249,14 @@ class SkinPackMerger {
             const skinFile = folderContent.skins[0];
             const skinData = await this.readJsonFile(skinFile);
             const geometryData = await this.processGeometryFiles(folderContent.geometries);
+            const textsData = await this.processTextsFiles(folderContent.texts);
             const packInfo = this.analyzeSkinPack(skinData, folderContent);
             
             const skinPack = {
                 folderName,
                 skinData,
                 geometryData,
+                textsData,
                 textureFiles: folderContent.textures,
                 otherFiles: folderContent.others,
                 info: packInfo
@@ -265,6 +273,32 @@ class SkinPackMerger {
             this.logMessage(`加载失败: ${folderName} - ${error.message}`, 'error');
             this.showToast(`加载失败: ${folderName}`, 'error');
         }
+    }
+
+    async processTextsFiles(textsFiles) {
+        const textsData = new Map();
+        
+        for (const file of textsFiles) {
+            try {
+                const content = await this.readFileAsText(file);
+                const relativePath = file.webkitRelativePath;
+                
+                // 提取 texts 文件夹后的相对路径
+                const textsIndex = relativePath.indexOf('/texts/');
+                if (textsIndex !== -1) {
+                    const textPath = relativePath.substring(textsIndex + 7); // +7 for '/texts/'
+                    textsData.set(textPath, {
+                        content: content,
+                        file: file,
+                        path: textPath
+                    });
+                }
+            } catch (error) {
+                this.logMessage(`文本文件读取失败: ${file.name}`, 'warning');
+            }
+        }
+        
+        return textsData;
     }
 
     async readJsonFile(file) {
@@ -320,6 +354,7 @@ class SkinPackMerger {
             skinCount: (skinData.skins || []).length,
             geometryCount: folderContent.geometries.length,
             textureCount: folderContent.textures.length,
+            textsCount: folderContent.texts.length,
             otherCount: folderContent.others.length,
             geometries: new Set(),
             textures: new Set()
@@ -372,6 +407,10 @@ class SkinPackMerger {
                     <div class="file-stat-label">纹理</div>
                 </div>
                 <div class="file-stat">
+                    <div class="file-stat-value">${skinPack.info.textsCount}</div>
+                    <div class="file-stat-label">文本</div>
+                </div>
+                <div class="file-stat">
                     <div class="file-stat-value">${skinPack.info.otherCount}</div>
                     <div class="file-stat-label">其他</div>
                 </div>
@@ -414,6 +453,23 @@ class SkinPackMerger {
                         ).join('')}
                         ${skinPack.textureFiles.length > 5 ? 
                             `<div class="file-category-item">+${skinPack.textureFiles.length - 5} 更多...</div>` : ''
+                        }
+                    </div>
+                </div>
+                ` : ''}
+
+                ${skinPack.textsData && skinPack.textsData.size > 0 ? `
+                <div class="file-category">
+                    <div class="file-category-title">
+                        <i class="fas fa-language"></i>
+                        文本文件
+                    </div>
+                    <div class="file-category-items">
+                        ${Array.from(skinPack.textsData.keys()).slice(0, 3).map(path => 
+                            `<div class="file-category-item">${path}</div>`
+                        ).join('')}
+                        ${skinPack.textsData.size > 3 ? 
+                            `<div class="file-category-item">+${skinPack.textsData.size - 3} 更多...</div>` : ''
                         }
                     </div>
                 </div>
@@ -610,19 +666,29 @@ class SkinPackMerger {
             zip.file('geometry.json', JSON.stringify(this.mergedResult.geometry, null, 2));
         }
         
-        this.updateProgress(20, '添加纹理文件...');
+        this.updateProgress(15, '添加文本文件...');
         
-        // Add texture files with proper paths
+        // Add texts files with proper folder structure
+        if (this.mergedResult.mergedTexts && this.mergedResult.mergedTexts.size > 0) {
+            const textsFiles = Array.from(this.mergedResult.mergedTexts);
+            for (const [filePath, content] of textsFiles) {
+                zip.file(`texts/${filePath}`, content);
+            }
+            this.logMessage(`添加了 ${textsFiles.length} 个文本文件`, 'info');
+        }
+        
+        this.updateProgress(25, '添加纹理文件...');
+        
+        // Add texture files
         if (this.mergedResult.textures.size > 0) {
             const textureFiles = Array.from(this.mergedResult.textures);
             for (let i = 0; i < textureFiles.length; i++) {
-                const [fileName, fileInfo] = textureFiles[i];
+                const [fileName, file] = textureFiles[i];
                 try {
-                    const fileContent = await this.readFileAsArrayBuffer(fileInfo.file);
-                    // 使用完整路径保存文件
-                    zip.file(fileInfo.path, fileContent);
+                    const fileContent = await this.readFileAsArrayBuffer(file);
+                    zip.file(fileName, fileContent);
                     
-                    const progress = 20 + (i / textureFiles.length) * 50;
+                    const progress = 25 + (i / textureFiles.length) * 40;
                     this.updateProgress(progress, `处理纹理: ${i + 1}/${textureFiles.length}`);
                     
                     if (i % 10 === 0) {
@@ -634,17 +700,16 @@ class SkinPackMerger {
             }
         }
         
-        this.updateProgress(70, '添加其他文件...');
+        this.updateProgress(65, '添加其他文件...');
         
-        // Add other files with proper paths
+        // Add other files
         if (this.mergedResult.others.size > 0) {
             const otherFiles = Array.from(this.mergedResult.others);
             for (let i = 0; i < otherFiles.length; i++) {
-                const [fileName, fileInfo] = otherFiles[i];
+                const [fileName, file] = otherFiles[i];
                 try {
-                    const fileContent = await this.readFileAsArrayBuffer(fileInfo.file);
-                    // 使用完整路径保存文件
-                    zip.file(fileInfo.path, fileContent);
+                    const fileContent = await this.readFileAsArrayBuffer(file);
+                    zip.file(fileName, fileContent);
                 } catch (error) {
                     this.logMessage(`其他文件处理失败: ${fileName}`, 'warning');
                 }
@@ -775,7 +840,7 @@ class SkinPackMerger {
     }
 }
 
-// Complete Skin Pack Merger Class - 修复版本
+// Complete Skin Pack Merger Class
 class CompleteSkinPackMerger {
     constructor() {
         const packageName = document.getElementById('packageName').value.trim();
@@ -792,10 +857,9 @@ class CompleteSkinPackMerger {
             "minecraft:geometry": []
         };
         
-        // 修改数据结构以支持文件路径分离
-        this.textureFiles = new Map(); // key: 唯一标识, value: {file, path, originalName, packName}
+        this.textureFiles = new Map();
         this.otherFiles = new Map();
-        this.filePathMap = new Map(); // 用于映射原始路径到新路径
+        this.mergedTexts = new Map(); // 新增：用于存储合并后的文本文件
     }
 
     async merge(skinPacks, progressCallback) {
@@ -814,15 +878,13 @@ class CompleteSkinPackMerger {
             }
             
             allPackNames.push(pack.info.serializeName);
-            const packPrefix = this.sanitizePackName(pack.folderName);
 
-            // Process skins with texture path updates
+            // Process skins
             const skins = pack.skinData.skins || [];
             for (const skin of skins) {
                 const skinCopy = JSON.parse(JSON.stringify(skin));
                 let skinName = skinCopy.localization_name || 'unknown';
                 
-                // Handle skin name conflicts
                 if (existingSkinNames.has(skinName)) {
                     let counter = 2;
                     let newName = `${skinName}_${counter}`;
@@ -834,22 +896,12 @@ class CompleteSkinPackMerger {
                     skinName = newName;
                 }
                 
-                // Update texture path if exists
-                if (skinCopy.texture) {
-                    const originalTexture = skinCopy.texture;
-                    const newTexturePath = `textures/${packPrefix}/${this.getFileName(originalTexture)}`;
-                    skinCopy.texture = newTexturePath;
-                    
-                    // 记录路径映射
-                    this.filePathMap.set(originalTexture, newTexturePath);
-                }
-                
                 existingSkinNames.add(skinName);
                 this.mergedSkins.skins.push(skinCopy);
                 totalSkins++;
             }
 
-            // Process geometries with identifier updates
+            // Process geometries
             for (const geoFile of pack.geometryData) {
                 const converted = this.convertGeometryToNewFormat(geoFile.data);
                 if (converted && converted['minecraft:geometry']) {
@@ -860,10 +912,10 @@ class CompleteSkinPackMerger {
                         let identifier = originalId;
                         if (existingGeometryIds.has(identifier)) {
                             let counter = 2;
-                            let newId = `${packPrefix}_${this.getFileName(identifier)}_${counter}`;
+                            let newId = `${identifier}_${counter}`;
                             while (existingGeometryIds.has(newId)) {
                                 counter++;
-                                newId = `${packPrefix}_${this.getFileName(identifier)}_${counter}`;
+                                newId = `${identifier}_${counter}`;
                             }
                             geometryCopy.description.identifier = newId;
                             identifier = newId;
@@ -876,37 +928,32 @@ class CompleteSkinPackMerger {
                 }
             }
 
-            // Collect texture files with unique paths
+            // Process texts files - 合并文本文件内容
+            if (pack.textsData && pack.textsData.size > 0) {
+                for (const [filePath, textData] of pack.textsData) {
+                    if (this.mergedTexts.has(filePath)) {
+                        // 如果文件已存在，将内容拼接在一起
+                        const existingContent = this.mergedTexts.get(filePath);
+                        const newContent = existingContent + '\n' + textData.content;
+                        this.mergedTexts.set(filePath, newContent);
+                        console.log(`合并文本文件: ${filePath}`);
+                    } else {
+                        // 如果文件不存在，直接添加
+                        this.mergedTexts.set(filePath, textData.content);
+                    }
+                }
+            }
+
+            // Collect files
             pack.textureFiles.forEach(file => {
-                const fileName = file.name;
-                const safeName = this.sanitizeFileName(fileName);
-                const uniquePath = `textures/${packPrefix}/${safeName}`;
-                const uniqueKey = `${packPrefix}_${fileName}`;
-                
-                if (!this.textureFiles.has(uniqueKey)) {
-                    this.textureFiles.set(uniqueKey, {
-                        file: file,
-                        path: uniquePath,
-                        originalName: fileName,
-                        packName: pack.folderName
-                    });
+                if (!this.textureFiles.has(file.name)) {
+                    this.textureFiles.set(file.name, file);
                 }
             });
 
-            // Collect other files with unique paths
             pack.otherFiles.forEach(file => {
-                const fileName = file.name;
-                const safeName = this.sanitizeFileName(fileName);
-                const uniquePath = `others/${packPrefix}/${safeName}`;
-                const uniqueKey = `${packPrefix}_${fileName}`;
-                
-                if (!this.otherFiles.has(uniqueKey)) {
-                    this.otherFiles.set(uniqueKey, {
-                        file: file,
-                        path: uniquePath,
-                        originalName: fileName,
-                        packName: pack.folderName
-                    });
+                if (!this.otherFiles.has(file.name)) {
+                    this.otherFiles.set(file.name, file);
                 }
             });
 
@@ -937,39 +984,15 @@ class CompleteSkinPackMerger {
             geometry: this.mergedGeometry,
             textures: this.textureFiles,
             others: this.otherFiles,
+            mergedTexts: this.mergedTexts, // 返回合并后的文本文件
             stats: {
                 totalSkins,
                 totalGeometries,
                 textureCount: this.textureFiles.size,
+                textsCount: this.mergedTexts.size,
                 folderCount: skinPacks.length
             }
         };
-    }
-
-    // 清理包名，用作文件夹前缀
-    sanitizePackName(packName) {
-        return packName
-            .replace(/[^a-zA-Z0-9_-]/g, '_')
-            .replace(/_{2,}/g, '_')
-            .replace(/^_|_$/g, '')
-            .toLowerCase();
-    }
-
-    // 清理文件名
-    sanitizeFileName(fileName) {
-        const extension = fileName.substring(fileName.lastIndexOf('.'));
-        const baseName = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
-        const cleanBaseName = baseName
-            .replace(/[^a-zA-Z0-9_-]/g, '_')
-            .replace(/_{2,}/g, '_')
-            .replace(/^_|_$/g, '');
-        
-        return cleanBaseName + extension;
-    }
-
-    // 获取文件名（不含路径）
-    getFileName(path) {
-        return path.split(/[/\\]/).pop() || path;
     }
 
     convertGeometryToNewFormat(data) {
