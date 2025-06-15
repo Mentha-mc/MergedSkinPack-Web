@@ -27,34 +27,6 @@ Minecraft 皮肤包合并工具是一个基于 Web 的应用程序，专门为 M
 - **设备**: 桌面设备（推荐）
 - **内存**: 建议 4GB+ RAM（处理大型皮肤包时）
 
-### 安装使用
-
-1. **下载项目文件**
-   ```bash
-   git clone https://github.com/your-username/minecraft-skin-merger.git
-   cd minecraft-skin-merger
-   ```
-
-2. **直接打开 HTML 文件**
-   ```bash
-   # 使用默认浏览器打开
-   open index.html
-   # 或双击 index.html 文件
-   ```
-
-3. **使用本地服务器（推荐）**
-   ```bash
-   # 使用 Python
-   python -m http.server 8000
-   
-   # 使用 Node.js
-   npx serve .
-   
-   # 然后访问 http://localhost:8000
-   ```
-
----
-
 ## 📋 使用教程
 
 ### 第一步：加载皮肤包
@@ -96,28 +68,6 @@ Minecraft 皮肤包合并工具是一个基于 Web 的应用程序，专门为 M
 3. 根据选择的格式下载文件
 
 ---
-
-## 🏗️ 技术架构
-
-### 核心技术栈
-
-- **前端框架**: 原生 JavaScript ES6+
-- **样式框架**: 自定义 CSS3（CSS Variables + Flexbox/Grid）
-- **图标库**: Font Awesome 6.0+
-- **压缩库**: JSZip 3.10+
-- **字体**: Inter (Google Fonts)
-
-### 项目结构
-
-```
-minecraft-skin-merger/
-├── index.html              # 主页面文件
-├── README.md               # 项目说明文档
-├── LICENSE                 # 许可证文件
-└── assets/                 # 资源文件夹（可选）
-    ├── screenshots/        # 截图文件
-    └── docs/              # 文档文件
-```
 
 ### 核心类说明
 
@@ -228,20 +178,9 @@ minecraft-skin-merger/
 
 ## 🙏 致谢
 
-- [Font Awesome](https://fontawesome.com/) - 提供图标库
+- [Font Awesome](https://fontawesome.com/) - 图标库
 - [JSZip](https://stuk.github.io/jszip/) - JavaScript ZIP 库
-- [Google Fonts](https://fonts.google.com/) - 提供 Inter 字体
-- Minecraft 社区 - 灵感和反馈
-
----
-
-## 📞 联系方式
-
-如果您有任何问题或建议，请通过以下方式联系我们：
-
-- 📧 Email: your-email@example.com
-- 🐛 Issues: [GitHub Issues](../../issues)
-- 💬 Discussions: [GitHub Discussions](../../discussions)
+- [Google Fonts](https://fonts.google.com/) - Inter 字体
 
 ---
 
